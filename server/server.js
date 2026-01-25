@@ -42,6 +42,19 @@ io.on("connection", socket => {
       return;
     }
 
+    // SIGNALISATION WEBRTC
+    socket.on("webrtc-offer", (offer) => {
+      socket.broadcast.emit("webrtc-offer", offer);
+  });
+
+  socket.on("webrtc-answer", (answer) => {
+    socket.broadcast.emit("webrtc-answer", answer);
+  });
+
+  socket.on("webrtc-candidate", (candidate) => {
+    socket.broadcast.emit("webrtc-candidate", candidate);
+  });
+    
     users.addUser(socket.id, pseudo, socket.handshake.address);
 
     // Historique messages (100 derniers)
