@@ -10,7 +10,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// --------------------
 // Supabase
+// --------------------
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
@@ -18,6 +20,9 @@ const supabase = createClient(
 
 app.use(express.static("public"));
 
+// --------------------
+// Nettoyage IP
+// --------------------
 function cleanIp(ip) {
   if (!ip) return "";
   if (ip.startsWith("::ffff:")) return ip.replace("::ffff:", "");
@@ -29,8 +34,11 @@ function cleanIp(ip) {
 // Whitelist IP
 // --------------------
 io.use((socket, next) => {
-  const ip = socket.handshake.address;
-  if (!config.whitelist.some(w => ip.includes(w))) {
+  const ip = cleanIp(socket.handshake.address);
+  console.log("Connexion IP :", ip);
+
+  if (!config.whitelist.some(w => ip.startsWith(w))) {
+    console.log("IP refusée :", ip);
     return next(new Error("IP refusée"));
   }
   next();
@@ -40,40 +48,11 @@ io.use((socket, next) => {
 // Connexions
 // --------------------
 io.on("connection", socket => {
-  const rawIp = socket.handshake.address;
-  const ip = cleanIp(rawIp);
+  const ip = cleanIp(socket.handshake.address);
 
-  console.log("IP brute :", rawIp);
-  console.log("IP nettoyée :", ip);
-
+  // pseudo par IP
   const defaultPseudo = users.getPseudoByIp(ip, config);
   socket.emit("defaultPseudo", defaultPseudo);
-
-  socket.on("login", async ({ pseudo, password }) => {
-    if (password !== config.password) {
-      socket.emit("login_error");
-      return;
-    }
-
-    users.addUser(socket.id, pseudo, ip);
-    io.emit("users", users.getUsers());
-  });
-});
-
-  // --------------------
-  // SIGNALISATION WEBRTC
-  // --------------------
-  socket.on("webrtc-offer", offer => {
-    socket.broadcast.emit("webrtc-offer", offer);
-  });
-
-  socket.on("webrtc-answer", answer => {
-    socket.broadcast.emit("webrtc-answer", answer);
-  });
-
-  socket.on("webrtc-candidate", candidate => {
-    socket.broadcast.emit("webrtc-candidate", candidate);
-  });
 
   // --------------------
   // LOGIN
@@ -84,27 +63,21 @@ io.on("connection", socket => {
       return;
     }
 
-    users.addUser(socket.id, pseudo, socket.handshake.address);
+    users.addUser(socket.id, pseudo, ip);
 
-    // Historique messages (100 derniers)
+    // Historique messages
     const { data, error } = await supabase
       .from("messages")
       .select("*")
       .order("id", { ascending: true })
       .limit(100);
 
-    if (error) {
-      console.error("Erreur Supabase history :", error);
-      socket.emit("history", []);
-    } else {
-      socket.emit("history", data);
-    }
-
+    socket.emit("history", error ? [] : data);
     io.emit("users", users.getUsers());
   });
 
   // --------------------
-  // MESSAGE
+  // MESSAGE TEXTE
   // --------------------
   socket.on("message", async msg => {
     if (!msg.text) return;
@@ -115,16 +88,39 @@ io.on("connection", socket => {
       time: new Date().toLocaleTimeString()
     };
 
-    const { error } = await supabase
-      .from("messages")
-      .insert(message);
-
-    if (error) {
-      console.error("Erreur Supabase insert :", error);
-      return;
-    }
-
+    await supabase.from("messages").insert(message);
     io.emit("message", message);
+  });
+
+  // --------------------
+  // WEBRTC SIGNALISATION
+  // --------------------
+  socket.on("webrtc-offer", data => {
+    socket.broadcast.emit("webrtc-offer", {
+      from: socket.id,
+      offer: data.offer
+    });
+  });
+
+  socket.on("webrtc-answer", data => {
+    socket.broadcast.emit("webrtc-answer", {
+      from: socket.id,
+      answer: data.answer
+    });
+  });
+
+  socket.on("webrtc-candidate", data => {
+    socket.broadcast.emit("webrtc-candidate", {
+      from: socket.id,
+      candidate: data.candidate
+    });
+  });
+
+  socket.on("voiceSpeaking", speaking => {
+    socket.broadcast.emit("voiceSpeaking", {
+      id: socket.id,
+      speaking
+    });
   });
 
   // --------------------
