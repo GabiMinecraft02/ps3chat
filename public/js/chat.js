@@ -39,10 +39,9 @@ socket.on("users", list => {
     const status = document.createElement("span");
     status.className = "status";
 
-    // Icônes selon le statut
-    if (u.isMuted) status.textContent = "🔇";     // muet
+    if (u.isMuted) status.textContent = "🔇";
     else if (u.inVoice) status.textContent = "🔊"; // micro actif
-    else status.textContent = "🔈";               // connecté mais pas actif
+    else status.textContent = "🔈"; // juste connecté
 
     li.appendChild(status);
     ul.appendChild(li);
