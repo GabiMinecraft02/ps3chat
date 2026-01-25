@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Discord Local</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="login">
+  <input id="pseudo" placeholder="Pseudo">
+  <input id="password" type="password" placeholder="Mot de passe">
+  <button onclick="login()">Connexion</button>
+</div>
+
+<div id="chat" style="display:none;">
+  <div id="users"></div>
+  <div id="messages"></div>
+
+  <div id="input-area">
+    <input id="msg" placeholder="Message">
+    <button onclick="send()">Envoyer</button>
+    <button id="voice-btn">🎤 Appel</button>
+    <button id="mute-btn">🔇 Muet</button>
+    <button id="mute-all-btn">🔇 Sourdine</button>
+    <select id="mic-select" title="Changer micro"></select>
+  </div>
+
+  <!-- Liste vocale compacte -->
+  <div id="voice-users">
+    <b>En ligne vocal :</b>
+    <ul id="voice-list"></ul>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/chat.js"></script>
+</body>
+</html>
