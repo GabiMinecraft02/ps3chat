@@ -35,26 +35,30 @@ io.use((socket, next) => {
 io.on("connection", socket => {
   console.log("Connexion :", socket.handshake.address);
 
+  // --------------------
+  // SIGNALISATION WEBRTC
+  // --------------------
+  socket.on("webrtc-offer", offer => {
+    socket.broadcast.emit("webrtc-offer", offer);
+  });
+
+  socket.on("webrtc-answer", answer => {
+    socket.broadcast.emit("webrtc-answer", answer);
+  });
+
+  socket.on("webrtc-candidate", candidate => {
+    socket.broadcast.emit("webrtc-candidate", candidate);
+  });
+
+  // --------------------
   // LOGIN
+  // --------------------
   socket.on("login", async ({ pseudo, password }) => {
     if (password !== config.password) {
       socket.emit("login_error");
       return;
     }
 
-    // SIGNALISATION WEBRTC
-    socket.on("webrtc-offer", (offer) => {
-      socket.broadcast.emit("webrtc-offer", offer);
-  });
-
-  socket.on("webrtc-answer", (answer) => {
-    socket.broadcast.emit("webrtc-answer", answer);
-  });
-
-  socket.on("webrtc-candidate", (candidate) => {
-    socket.broadcast.emit("webrtc-candidate", candidate);
-  });
-    
     users.addUser(socket.id, pseudo, socket.handshake.address);
 
     // Historique messages (100 derniers)
@@ -74,7 +78,9 @@ io.on("connection", socket => {
     io.emit("users", users.getUsers());
   });
 
+  // --------------------
   // MESSAGE
+  // --------------------
   socket.on("message", async msg => {
     if (!msg.text) return;
 
@@ -96,7 +102,9 @@ io.on("connection", socket => {
     io.emit("message", message);
   });
 
+  // --------------------
   // DECONNEXION
+  // --------------------
   socket.on("disconnect", () => {
     users.removeUser(socket.id);
     io.emit("users", users.getUsers());
