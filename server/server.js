@@ -18,6 +18,13 @@ const supabase = createClient(
 
 app.use(express.static("public"));
 
+function cleanIp(ip) {
+  if (!ip) return "";
+  if (ip.startsWith("::ffff:")) return ip.replace("::ffff:", "");
+  if (ip === "::1") return "127.0.0.1";
+  return ip;
+}
+
 // --------------------
 // Whitelist IP
 // --------------------
