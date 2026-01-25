@@ -40,7 +40,25 @@ io.use((socket, next) => {
 // Connexions
 // --------------------
 io.on("connection", socket => {
-  console.log("Connexion :", socket.handshake.address);
+  const rawIp = socket.handshake.address;
+  const ip = cleanIp(rawIp);
+
+  console.log("IP brute :", rawIp);
+  console.log("IP nettoyée :", ip);
+
+  const defaultPseudo = users.getPseudoByIp(ip, config);
+  socket.emit("defaultPseudo", defaultPseudo);
+
+  socket.on("login", async ({ pseudo, password }) => {
+    if (password !== config.password) {
+      socket.emit("login_error");
+      return;
+    }
+
+    users.addUser(socket.id, pseudo, ip);
+    io.emit("users", users.getUsers());
+  });
+});
 
   // --------------------
   // SIGNALISATION WEBRTC
