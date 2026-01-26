@@ -1,25 +1,9 @@
-const pseudoInput = document.getElementById("pseudo");
-const loginBtn = document.getElementById("loginBtn");
+const socket = io();
 
-// récupérer pseudo sauvegardé (lié à l’IP côté serveur)
-fetch("/me")
-  .then(res => res.json())
-  .then(data => {
-    if (data.pseudo) {
-      pseudoInput.value = data.pseudo;
-    }
-  });
-
-// valider le pseudo
-loginBtn.onclick = () => {
-  const pseudo = pseudoInput.value.trim();
-  if (!pseudo) return alert("Pseudo requis");
-
-  fetch("/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pseudo })
-  }).then(() => {
-    window.location.href = "/";
-  });
+document.getElementById("login-btn").onclick = () => {
+  const pseudo = document.getElementById("pseudo").value;
+  const password = document.getElementById("password").value;
+  socket.emit("login", { pseudo, password });
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("chat-screen").style.display = "flex";
 };
