@@ -1,26 +1,19 @@
-const users = {};
-const ipMap = {};
-
-function addUser(socketId, pseudo, ip) {
-  ipMap[ip] = pseudo;
-  users[socketId] = { socketId, pseudo };
-}
-
-function removeUser(socketId) {
-  delete users[socketId];
-}
-
-function getUsers() {
-  return Object.values(users);
-}
-
-function getPseudoByIp(ip, config) {
-  return ipMap[ip] || config.ipPseudos[ip] || "";
-}
+const users = new Map();
 
 module.exports = {
-  addUser,
-  removeUser,
-  getUsers,
-  getPseudoByIp
+  addUser(id, pseudo, ip) {
+    users.set(id, { id, pseudo, ip, inVoice: false, isMuted: false });
+  },
+  removeUser(id) {
+    users.delete(id);
+  },
+  getUsers() {
+    return Array.from(users.values());
+  },
+  getPseudoByIp(ip, config) {
+    for (const key in config.ipPseudo) {
+      if (ip.startsWith(key)) return config.ipPseudo[key];
+    }
+    return "";
+  }
 };
