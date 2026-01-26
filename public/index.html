@@ -2,38 +2,46 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>ps3chat</title></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PS3Chat</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div id="login">
+<div id="login-screen">
   <input id="pseudo" placeholder="Pseudo">
   <input id="password" type="password" placeholder="Mot de passe">
-  <button onclick="login()">Connexion</button>
+  <button id="login-btn">Connexion</button>
 </div>
 
-<div id="chat" style="display:none;">
-  <div id="users"></div>
-  <div id="messages"></div>
-
-  <div id="input-area">
-    <input id="msg" placeholder="Message">
-    <button onclick="send()">Envoyer</button>
-    <button id="voice-btn">🎤 Appel</button>
-    <button id="mute-btn">🔇 Muet</button>
-    <button id="mute-all-btn">🔇 Sourdine</button>
-    <select id="mic-select" title="Changer micro"></select>
+<div id="chat-screen" style="display:none;">
+  <div id="chat-area">
+    <div id="messages"></div>
   </div>
 
-  <!-- Liste vocale compacte -->
-  <div id="voice-users">
-    <b>En ligne vocal :</b>
-    <ul id="voice-list"></ul>
+  <div id="sidebar">
+    <div id="users-section">
+      <b>Connectés</b>
+      <ul id="user-list"></ul>
+    </div>
+
+    <div id="controls-section">
+      <button id="voice-btn">🎤 Activer micro</button>
+      <button id="mute-btn">🔇 Muet</button>
+      <button id="sourdine-btn">🔕 Sourdine</button>
+    </div>
+
+    <div id="input-section">
+      <input id="msg" placeholder="Écrire un message...">
+      <button id="send-btn">Envoyer</button>
+    </div>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="js/login.js"></script>
 <script src="js/chat.js"></script>
+<script src="js/webrtc.js"></script>
+
 </body>
 </html>
