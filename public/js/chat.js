@@ -39,6 +39,11 @@ socket.on("history", msgs => {
   msgs.forEach(addMessage);
 });
 
+socket.emit("message", {
+  username: myPseudo,
+  text: messageInput.value
+});
+
 // --------------------
 // MESSAGES
 // --------------------
@@ -50,10 +55,10 @@ messageInput.onkeydown = e => {
 };
 
 function sendMessage() {
-  if (!messageInput.value) return;
+  if (!messageInput.value.trim()) return;
 
   socket.emit("message", {
-    user: myPseudo,
+    pseudo: myPseudo,
     text: messageInput.value
   });
 
@@ -62,7 +67,8 @@ function sendMessage() {
 
 function addMessage(msg) {
   const div = document.createElement("div");
-  div.innerHTML = `<b>${msg.username}</b> : ${msg.text}`;
+  div.className = "message";
+  div.innerHTML = `<b>${msg.pseudo}</b> : ${msg.text}`;
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
