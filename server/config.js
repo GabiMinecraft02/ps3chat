@@ -9,7 +9,7 @@ module.exports = {
     "192.168.1.14",
   ],
 
-  ipPseudos: {
+  ipNames: {
     "192.168.1.39": "GabiMinecraft02",
     "192.168.1.14": "Gabi",
     "192.168.1.14": "LM_-Couscous"
