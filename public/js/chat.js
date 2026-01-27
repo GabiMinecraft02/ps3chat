@@ -14,16 +14,16 @@ const sendBtn = document.getElementById("sendBtn");
 const usersUl = document.getElementById("users");
 
 let myPseudo = "";
+let inVoice = false;
+let isMuted = false;
 
-// Pré-remplissage pseudo par IP
-socket.on("prefill_pseudo", pseudo => {
-  if (pseudo) pseudoInput.value = pseudo;
-});
-
+// --------------------
 // LOGIN
+// --------------------
 loginBtn.onclick = () => {
+  myPseudo = pseudoInput.value;
   socket.emit("login", {
-    pseudo: pseudoInput.value,
+    pseudo: myPseudo,
     password: passwordInput.value
   });
 };
@@ -39,6 +39,9 @@ socket.on("history", msgs => {
   msgs.forEach(addMessage);
 });
 
+// --------------------
+// MESSAGES
+// --------------------
 socket.on("message", addMessage);
 
 sendBtn.onclick = sendMessage;
@@ -48,19 +51,39 @@ messageInput.onkeydown = e => {
 
 function sendMessage() {
   if (!messageInput.value) return;
+
   socket.emit("message", {
-    user: myPseudo || pseudoInput.value,
+    user: myPseudo,
     text: messageInput.value
   });
+
   messageInput.value = "";
 }
 
 function addMessage(msg) {
   const div = document.createElement("div");
-  div.textContent = `[${msg.time}] ${msg.username}: ${msg.text}`;
+  div.innerHTML = `<b>${msg.username}</b> : ${msg.text}`;
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// USERS
-socket.on("users", users =>
+// --------------------
+// USERS + ICÔNES
+// --------------------
+socket.on("users", list => {
+  usersUl.innerHTML = "";
+
+  list.forEach(u => {
+    const li = document.createElement("li");
+    li.textContent = u.pseudo + " ";
+
+    const icon = document.createElement("span");
+
+    if (u.isMuted) icon.textContent = "🔇";
+    else if (u.inVoice) icon.textContent = "🔊";
+    else icon.textContent = "🔈";
+
+    li.appendChild(icon);
+    usersUl.appendChild(li);
+  });
+});
