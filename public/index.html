@@ -1,47 +1,41 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PS3Chat</title>
+  <meta charset="UTF-8" />
+  <title>ps3chat</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div id="login-screen">
+<div id="login">
+  <h2>Connexion</h2>
   <input id="pseudo" placeholder="Pseudo">
   <input id="password" type="password" placeholder="Mot de passe">
-  <button id="login-btn">Connexion</button>
+  <button id="loginBtn">Entrer</button>
+  <div id="loginError" style="color:red;display:none;">Erreur</div>
 </div>
 
-<div id="chat-screen" style="display:none;">
-  <div id="chat-area">
+<div id="chat" style="display:none;">
+
+  <div id="left">
     <div id="messages"></div>
+    <input id="messageInput" placeholder="Message">
+    <button id="sendBtn">Envoyer</button>
   </div>
 
-  <div id="sidebar">
-    <div id="users-section">
-      <b>Connectés</b>
-      <ul id="user-list"></ul>
-    </div>
+  <div id="right">
+    <h3>Connectés</h3>
+    <ul id="users"></ul>
 
-    <div id="controls-section">
-      <button id="voice-btn">🎤 Activer micro</button>
-      <button id="mute-btn">🔇 Muet</button>
-      <button id="sourdine-btn">🔕 Sourdine</button>
-    </div>
-
-    <div id="input-section">
-      <input id="msg" placeholder="Écrire un message...">
-      <button id="send-btn">Envoyer</button>
-    </div>
+    <button id="micBtn">🎤 Micro</button>
+    <button id="muteBtn">🔇 Mute</button>
   </div>
+
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script src="js/login.js"></script>
 <script src="js/chat.js"></script>
+<script src="js/users.js"></script>
 <script src="js/webrtc.js"></script>
-
 </body>
 </html>
