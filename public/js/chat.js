@@ -1,4 +1,6 @@
-const socket = io();
+const socket = io("/", {
+  transports: ["websocket"]
+});
 
 const messagesDiv = document.getElementById("messages");
 const messageInput = document.getElementById("msg");
