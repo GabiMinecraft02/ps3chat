@@ -1,19 +1,25 @@
-const usersUl = document.getElementById("users");
+const usersList = document.getElementById("users");
 
 socket.on("users", list => {
-  usersUl.innerHTML = "";
+  usersList.innerHTML = "";
 
   list.forEach(u => {
     const li = document.createElement("li");
-    li.textContent = u.pseudo + " ";
+    li.className = "user";
 
-    const icon = document.createElement("span");
+    const name = document.createElement("span");
+    name.textContent = u.pseudo;
 
-    if (u.isMuted) icon.textContent = "🔇";
-    else if (u.inVoice) icon.textContent = "🔊";
-    else icon.textContent = "🔈";
+    const status = document.createElement("span");
+    status.className = "status";
 
-    li.appendChild(icon);
-    usersUl.appendChild(li);
+    // 🔈 présent / 🔊 parle / 🔇 mute
+    if (u.isMuted) status.textContent = " 🔇";
+    else if (u.inVoice) status.textContent = " 🔊";
+    else status.textContent = " 🔈";
+
+    li.appendChild(name);
+    li.appendChild(status);
+    usersList.appendChild(li);
   });
 });
