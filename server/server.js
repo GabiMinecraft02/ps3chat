@@ -10,90 +10,135 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// --------------------
 // Supabase
+// --------------------
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
 
+// --------------------
+// Static files
+// --------------------
 app.use(express.static("public"));
 
 // --------------------
-// Whitelist IP
+// IP Whitelist
 // --------------------
 io.use((socket, next) => {
-  const ip = socket.handshake.address;
+  const ip =
+    socket.handshake.headers["x-forwarded-for"] ||
+    socket.handshake.address;
+
   if (!config.whitelist.some(w => ip.includes(w))) {
+    console.log("IP refusée :", ip);
     return next(new Error("IP refusée"));
   }
+
+  socket.realIp = ip;
   next();
 });
 
 // --------------------
-// Connexion
+// Connexion Socket
 // --------------------
 io.on("connection", socket => {
-  console.log("Connexion :", socket.handshake.address);
+  console.log("Connexion :", socket.realIp);
 
+  // --------------------
+  // LOGIN
+  // --------------------
   socket.on("login", async ({ pseudo, password }) => {
     if (password !== config.password) {
       socket.emit("login_error");
       return;
     }
 
-    users.addUser(socket.id, pseudo, socket.handshake.address);
+    // Sécurité pseudo
+    if (!pseudo || !pseudo.trim()) {
+      pseudo = "Invité";
+    }
 
-    // Historique Supabase
-    const { data } = await supabase
+    users.addUser(socket.id, pseudo, socket.realIp);
+
+    // -------- Historique messages --------
+    const { data, error } = await supabase
       .from("messages")
       .select("*")
       .order("id", { ascending: true })
       .limit(100);
 
-    socket.emit("history", data || []);
+    if (error) {
+      console.error("Supabase history error:", error);
+      socket.emit("history", []);
+    } else {
+      socket.emit("history", data);
+    }
+
     io.emit("users", users.getUsers());
   });
 
+  // --------------------
+  // MESSAGE
+  // --------------------
   socket.on("message", async msg => {
-  if (!msg.text || !msg.pseudo) return;
+    const user = users.getUser(socket.id);
+    if (!user) return;
 
-  const message = {
-    pseudo: msg.pseudo,
-    text: msg.text,
-    time: new Date().toLocaleTimeString()
-  };
+    if (!msg.text || !msg.text.trim()) return;
 
-  const { error } = await supabase
-    .from("messages")
-    .insert(message);
+    const message = {
+      username: user.pseudo, // 👈 PLUS JAMAIS undefined
+      text: msg.text,
+      time: new Date().toLocaleTimeString()
+    };
 
-  if (error) {
-    console.error("Erreur Supabase insert :", error);
-    return;
-  }
+    const { error } = await supabase
+      .from("messages")
+      .insert(message);
 
-  io.emit("message", message);
-});
+    if (error) {
+      console.error("Supabase insert error:", error);
+      return;
+    }
 
-  // Vocal état
+    io.emit("message", message);
+  });
+
+  // --------------------
+  // VOCAL (état seulement)
+  // --------------------
   socket.on("joinVoice", () => {
-    users.setVoice(socket.id, true, false);
+    users.setVoice(socket.id, true);
+    users.setMuted(socket.id, false);
     io.emit("users", users.getUsers());
   });
 
   socket.on("leaveVoice", () => {
-    users.setVoice(socket.id, false, true);
+    users.setVoice(socket.id, false);
     io.emit("users", users.getUsers());
   });
 
+  socket.on("mute", isMuted => {
+    users.setMuted(socket.id, isMuted);
+    io.emit("users", users.getUsers());
+  });
+
+  // --------------------
+  // DECONNEXION
+  // --------------------
   socket.on("disconnect", () => {
+    console.log("Déconnexion :", socket.realIp);
     users.removeUser(socket.id);
     io.emit("users", users.getUsers());
   });
 });
 
 // --------------------
+// Lancement serveur
+// --------------------
 const PORT = process.env.PORT || 40000;
 server.listen(PORT, () => {
-  console.log("Serveur lancé sur", PORT);
+  console.log("PS3CHAT lancé sur le port", PORT);
 });
