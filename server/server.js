@@ -1,8 +1,7 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const { createClient } = require("@supabase/supabase-js");
-
+const { createClient } = require("@supabase/supabase-js"); // <--- correct
 const config = require("./config");
 const users = require("./users");
 
