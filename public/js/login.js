@@ -1,31 +1,24 @@
-const socket = io();
+document.addEventListener("DOMContentLoaded", () => {
+  const loginBtn = document.getElementById("loginBtn");
+  const pseudoInput = document.getElementById("pseudo");
+  const passwordInput = document.getElementById("password");
 
-const pseudoInput = document.getElementById("pseudo");
-const passwordInput = document.getElementById("password");
-const loginBtn = document.getElementById("loginBtn");
-const errorDiv = document.getElementById("error");
+  loginBtn.addEventListener("click", login);
 
-// Pseudo auto depuis IP si dispo
-if (localStorage.getItem("pseudo")) {
-  pseudoInput.value = localStorage.getItem("pseudo");
-}
+  function login() {
+    const pseudo = pseudoInput.value.trim();
+    const password = passwordInput.value.trim();
+    if (!pseudo || !password) return alert("Pseudo et mot de passe requis");
 
-loginBtn.onclick = () => {
-  const pseudo = pseudoInput.value.trim();
-  const password = passwordInput.value;
+    socket.emit("login", { pseudo, password });
+  }
 
-  if (!pseudo || !password) return;
+  socket.on("login_error", () => {
+    alert("Mot de passe incorrect");
+  });
 
-  localStorage.setItem("pseudo", pseudo);
-
-  socket.emit("login", { pseudo, password });
-};
-
-socket.on("login_error", () => {
-  errorDiv.style.display = "block";
-});
-
-socket.on("history", () => {
-  // login OK → chat
-  window.location.href = "/";
+  socket.on("history", messages => {
+    localStorage.setItem("history", JSON.stringify(messages));
+    window.location.href = "chat.html"; // Redirection après login
+  });
 });
