@@ -1,59 +1,29 @@
-// chat.js
-document.addEventListener("DOMContentLoaded", () => {
-  const sendBtn = document.getElementById("sendBtn");
-  const startBtn = document.getElementById("startBtn");
-  const messagesDiv = document.getElementById("messages");
-  const messageInput = document.getElementById("messageInput");
-  const usersList = document.getElementById("usersList");
+const socket = io();
 
-  // Récupère pseudo depuis le login ou demande si absent
-  let myPseudo = localStorage.getItem("pseudo");
-  if (!myPseudo) {
-    myPseudo = prompt("Entrez votre pseudo");
-    localStorage.setItem("pseudo", myPseudo);
-  }
+const messagesDiv = document.getElementById("messages");
+const messageInput = document.getElementById("msg");
+const sendBtn = document.getElementById("send-btn");
 
-  // Affiche l'historique si présent
-  const history = JSON.parse(localStorage.getItem("history") || "[]");
-  history.forEach(addMessage);
-
-  // Envoyer un message
-  sendBtn.onclick = sendMessage;
-  messageInput.onkeydown = e => {
-    if (e.key === "Enter") sendMessage();
-  };
-
-  function sendMessage() {
-    const text = messageInput.value.trim();
-    if (!text) return;
-
-    socket.emit("message", {
-      pseudo: myPseudo,
-      text: text
-    });
-
-    messageInput.value = "";
-  }
-
-  // Affichage message reçu
-  socket.on("message", addMessage);
-
-  function addMessage(msg) {
-    const div = document.createElement("div");
-    div.className = "message";
-    div.innerHTML = `<b>${msg.pseudo}</b> : ${msg.text}`;
-    messagesDiv.appendChild(div);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  }
-
-  // Liste des utilisateurs connectés
-  socket.on("users", users => {
-    if (!usersList) return;
-    usersList.innerHTML = "";
-    users.forEach(u => {
-      const li = document.createElement("li");
-      li.textContent = `${u.pseudo} (${u.ip})`;
-      usersList.appendChild(li);
-    });
-  });
+sendBtn.addEventListener("click", sendMessage);
+messageInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") sendMessage();
 });
+
+function sendMessage() {
+  if (!messageInput.value) return;
+  socket.emit("message", {
+    pseudo: myPseudo,
+    text: messageInput.value
+  });
+  messageInput.value = "";
+}
+
+socket.on("message", addMessage);
+socket.on("history", data => data.forEach(addMessage));
+
+function addMessage(msg) {
+  const div = document.createElement("div");
+  div.innerHTML = `<b>${msg.pseudo}</b>: ${msg.text}`;
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
