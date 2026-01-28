@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const { createClient } = require("@supabase/supabase-js");
+
 const config = require("./config");
 const users = require("./users");
 
@@ -16,21 +17,25 @@ const supabase = createClient(
 
 app.use(express.static("public"));
 
+// --------------------
+// WHITELIST IP
+// --------------------
 io.use((socket, next) => {
   const ip =
     socket.handshake.headers["x-forwarded-for"] ||
     socket.handshake.address;
 
-  console.log("IP detectée :", ip);
-
   if (!config.whitelist.some(w => ip.includes(w))) {
-    console.log("IP non autorisee :", ip);
     return next(new Error("IP refusée"));
   }
+
   socket.realIp = ip;
   next();
 });
 
+// --------------------
+// SOCKETS
+// --------------------
 io.on("connection", socket => {
   console.log("Connecté :", socket.realIp);
 
@@ -40,15 +45,16 @@ io.on("connection", socket => {
       return;
     }
 
+    // Associer IP ↔ pseudo
     users.addUser(socket.id, pseudo, socket.realIp);
 
-    const { data, error } = await supabase
+    // Historique
+    const { data } = await supabase
       .from("messages")
       .select("*")
       .order("id", { ascending: true });
 
-    socket.emit("history", error ? [] : data);
-
+    socket.emit("history", data || []);
     io.emit("users", users.getUsers());
   });
 
@@ -62,7 +68,6 @@ io.on("connection", socket => {
     };
 
     await supabase.from("messages").insert(message);
-
     io.emit("message", message);
   });
 
@@ -75,3 +80,4 @@ io.on("connection", socket => {
 server.listen(process.env.PORT || 40000, () => {
   console.log("Serveur démarré");
 });
+
