@@ -1,23 +1,41 @@
-const startBtn = document.getElementById("voice-btn");
-const muteBtn = document.getElementById("mute-btn");
+document.addEventListener("DOMContentLoaded", async () => {
+  const voiceBtn = document.getElementById("voice-btn");
+  const muteBtn = document.getElementById("mute-btn");
 
-let localStream;
-let muted = false;
-
-startBtn.addEventListener("click", async () => {
-  if (!localStream) {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    // ici tu peux brancher à WebRTC peer connection
+  if (!voiceBtn || !muteBtn) {
+    console.warn("Boutons micro absents");
+    return;
   }
-  localStream.getAudioTracks()[0].enabled = true;
+
+  let stream = null;
+  let muted = false;
+
+  voiceBtn.onclick = async () => {
+    if (!stream) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        voiceBtn.textContent = "🎤 Activé";
+      } catch (e) {
+        alert("Micro refusé");
+      }
+    } else {
+      stopStream();
+    }
+  };
+
+  muteBtn.onclick = () => {
+    if (!stream) return;
+
+    muted = !muted;
+    stream.getAudioTracks().forEach(t => (t.enabled = !muted));
+    muteBtn.textContent = muted ? "🔊 Son coupé" : "🔇 Muet";
+  };
+
+  function stopStream() {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    muted = false;
+    voiceBtn.textContent = "🎤 Activer";
+    muteBtn.textContent = "🔇 Muet";
+  }
 });
-
-muteBtn.addEventListener("click", () => {
-  if (!localStream) return;
-  muted = !muted;
-  localStream.getAudioTracks()[0].enabled = !muted;
-  muteBtn.textContent = muted ? "🔇 Muet" : "🎤 Activer";
-});
-
-
-
