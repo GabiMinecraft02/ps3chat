@@ -3,7 +3,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let localStream;
   let pc;
 
-  const startBtn = document.getElementById("startCall");
+  const sendBtn = document.getElementById("sendBtn");
+  const startBtn = document.getElementById("startBtn");
   const muteBtn = document.getElementById("muteBtn");
   const localAudio = document.getElementById("localAudio");
 
@@ -66,3 +67,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 });
+
