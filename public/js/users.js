@@ -1,12 +1,11 @@
-// users.js
-const usersList = document.getElementById("usersList");
+const socket = io();
+const usersList = document.getElementById("users-list");
 
-socket.on("users", users => {
-  if (!usersList) return;
+socket.on("users", list => {
   usersList.innerHTML = "";
-  users.forEach(u => {
-    const li = document.createElement("li");
-    li.textContent = `${u.pseudo} (${u.ip})`;
-    usersList.appendChild(li);
+  list.forEach(u => {
+    const div = document.createElement("div");
+    div.textContent = u.pseudo;
+    usersList.appendChild(div);
   });
 });
