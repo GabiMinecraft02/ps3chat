@@ -1,25 +1,12 @@
-const usersList = document.getElementById("users");
+// users.js
+const usersList = document.getElementById("usersList");
 
-socket.on("users", list => {
+socket.on("users", users => {
+  if (!usersList) return;
   usersList.innerHTML = "";
-
-  list.forEach(u => {
+  users.forEach(u => {
     const li = document.createElement("li");
-    li.className = "user";
-
-    const name = document.createElement("span");
-    name.textContent = u.pseudo;
-
-    const status = document.createElement("span");
-    status.className = "status";
-
-    // 🔈 présent / 🔊 parle / 🔇 mute
-    if (u.isMuted) status.textContent = " 🔇";
-    else if (u.inVoice) status.textContent = " 🔊";
-    else status.textContent = " 🔈";
-
-    li.appendChild(name);
-    li.appendChild(status);
+    li.textContent = `${u.pseudo} (${u.ip})`;
     usersList.appendChild(li);
   });
 });
