@@ -1,8 +1,9 @@
 // chat.js
 document.addEventListener("DOMContentLoaded", () => {
+  const sendBtn = document.getElementById("sendBtn");
+  const startBtn = document.getElementById("startBtn");
   const messagesDiv = document.getElementById("messages");
   const messageInput = document.getElementById("messageInput");
-  const sendBtn = document.getElementById("sendBtn");
   const usersList = document.getElementById("usersList");
 
   // Récupère pseudo depuis le login ou demande si absent
