@@ -1,127 +1,58 @@
-const socket = io();
+// chat.js
+document.addEventListener("DOMContentLoaded", () => {
+  const messagesDiv = document.getElementById("messages");
+  const messageInput = document.getElementById("messageInput");
+  const sendBtn = document.getElementById("sendBtn");
+  const usersList = document.getElementById("usersList");
 
-// DOM
-const loginDiv = document.getElementById("login");
-const chatContainer = document.getElementById("chat-container");
-const pseudoInput = document.getElementById("pseudo");
-const passwordInput = document.getElementById("password");
-const messagesDiv = document.getElementById("messages");
-const messageInput = document.getElementById("msg");
-const sendBtn = document.getElementById("send-btn");
-const voiceBtn = document.getElementById("voice-btn");
-const muteBtn = document.getElementById("mute-btn");
-const usersList = document.getElementById("users");
-
-let myPseudo = "";
-let localStream = null;
-let isMuted = true;
-let inVoice = false;
-
-// --------------------
-// LOGIN
-// --------------------
-function login() {
-  const pseudo = pseudoInput.value.trim();
-  const password = passwordInput.value.trim();
-  if (!pseudo || !password) return alert("Pseudo et mot de passe requis");
-  
-  socket.emit("login", { pseudo, password });
-  myPseudo = pseudo;
-}
-
-socket.on("login_error", () => alert("Mot de passe incorrect"));
-
-socket.on("history", data => {
-  loginDiv.style.display = "none";
-  chatContainer.style.display = "flex";
-  messagesDiv.innerHTML = "";
-  data.forEach(addMessage);
-});
-
-// --------------------
-// USERS
-// --------------------
-socket.on("users", list => {
-  usersList.innerHTML = "";
-  list.forEach(u => {
-    const li = document.createElement("li");
-    li.textContent = u.pseudo;
-
-    const status = document.createElement("span");
-    status.className = "status";
-
-    if (u.isMuted) status.textContent = "🔇";
-    else if (u.inVoice) status.textContent = "🔊";
-    else status.textContent = "🔈";
-
-    li.appendChild(status);
-    usersList.appendChild(li);
-  });
-});
-
-// --------------------
-// MESSAGES
-// --------------------
-socket.on("message", addMessage);
-
-sendBtn.onclick = sendMessage;
-messageInput.onkeydown = e => {
-  if (e.key === "Enter") sendMessage();
-};
-
-function sendMessage() {
-  if (!messageInput.value) return;
-
-  socket.emit("message", {
-    pseudo: myPseudo,
-    text: messageInput.value
-  });
-
-  messageInput.value = "";
-}
-
-function addMessage(msg) {
-  const div = document.createElement("div");
-  div.innerHTML = `<b>${msg.pseudo}</b>: ${msg.text}`;
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
-
-// --------------------
-// VOCAL
-// --------------------
-voiceBtn.onclick = async () => {
-  if (inVoice) return stopVoice();
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    inVoice = true;
-    isMuted = false;
-    muteBtn.textContent = "🔇 Muet";
-
-    socket.emit("joinVoice");
-
-    // ajoute notre flux à la page via webrtc.js
-    addLocalStream(localStream);
-
-  } catch (err) {
-    alert("Impossible d’accéder au micro : " + err.message);
+  // Récupère pseudo depuis le login ou demande si absent
+  let myPseudo = localStorage.getItem("pseudo");
+  if (!myPseudo) {
+    myPseudo = prompt("Entrez votre pseudo");
+    localStorage.setItem("pseudo", myPseudo);
   }
-};
 
-muteBtn.onclick = () => {
-  if (!localStream) return;
-  isMuted = !isMuted;
-  localStream.getAudioTracks()[0].enabled = !isMuted;
-  muteBtn.textContent = isMuted ? "🔇 Muet" : "🎤 Actif";
-  socket.emit(isMuted ? "leaveVoice" : "joinVoice");
-};
+  // Affiche l'historique si présent
+  const history = JSON.parse(localStorage.getItem("history") || "[]");
+  history.forEach(addMessage);
 
-function stopVoice() {
-  if (!localStream) return;
-  localStream.getTracks().forEach(t => t.stop());
-  inVoice = false;
-  isMuted = true;
-  muteBtn.textContent = "🔇 Muet";
-  socket.emit("leaveVoice");
-}
+  // Envoyer un message
+  sendBtn.onclick = sendMessage;
+  messageInput.onkeydown = e => {
+    if (e.key === "Enter") sendMessage();
+  };
+
+  function sendMessage() {
+    const text = messageInput.value.trim();
+    if (!text) return;
+
+    socket.emit("message", {
+      pseudo: myPseudo,
+      text: text
+    });
+
+    messageInput.value = "";
+  }
+
+  // Affichage message reçu
+  socket.on("message", addMessage);
+
+  function addMessage(msg) {
+    const div = document.createElement("div");
+    div.className = "message";
+    div.innerHTML = `<b>${msg.pseudo}</b> : ${msg.text}`;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  // Liste des utilisateurs connectés
+  socket.on("users", users => {
+    if (!usersList) return;
+    usersList.innerHTML = "";
+    users.forEach(u => {
+      const li = document.createElement("li");
+      li.textContent = `${u.pseudo} (${u.ip})`;
+      usersList.appendChild(li);
+    });
+  });
+});
