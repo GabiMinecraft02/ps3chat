@@ -65,14 +65,15 @@
   <div id="loginBox">
     <h2>PS3Chat</h2>
 
-    <input id="pseudo" placeholder="Pseudo">
-    <input id="password" type="password" placeholder="Mot de passe">
+<div id="login-container">
+  <input id="pseudo" placeholder="Pseudo">
+  <input id="password" type="password" placeholder="Mot de passe">
+  <button id="login-btn">Se connecter</button>
+</div>
 
-    <button id="loginBtn">Connexion</button>
-    <div id="error">Mot de passe incorrect</div>
-  </div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/login.js"></script>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="js/login.js"></script>
 </body>
 </html>
+
