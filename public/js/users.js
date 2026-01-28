@@ -1,4 +1,7 @@
-const socket = io();
+const socket = io("/", {
+  transports: ["websocket"]
+});
+
 const usersList = document.getElementById("users-list");
 
 socket.on("users", list => {
@@ -9,3 +12,4 @@ socket.on("users", list => {
     usersList.appendChild(div);
   });
 });
+
