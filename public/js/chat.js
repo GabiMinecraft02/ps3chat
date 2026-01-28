@@ -1,47 +1,62 @@
 const socket = io();
 
+// DOM
 const loginDiv = document.getElementById("login");
-const chatDiv = document.getElementById("chat");
-
+const chatContainer = document.getElementById("chat-container");
 const pseudoInput = document.getElementById("pseudo");
 const passwordInput = document.getElementById("password");
-const loginBtn = document.getElementById("loginBtn");
-const loginError = document.getElementById("loginError");
-
 const messagesDiv = document.getElementById("messages");
-const messageInput = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
-const usersUl = document.getElementById("users");
+const messageInput = document.getElementById("msg");
+const sendBtn = document.getElementById("send-btn");
+const voiceBtn = document.getElementById("voice-btn");
+const muteBtn = document.getElementById("mute-btn");
+const usersList = document.getElementById("users");
 
 let myPseudo = "";
+let localStream = null;
+let isMuted = true;
 let inVoice = false;
-let isMuted = false;
 
 // --------------------
 // LOGIN
 // --------------------
-loginBtn.onclick = () => {
-  myPseudo = pseudoInput.value;
-  socket.emit("login", {
-    pseudo: myPseudo,
-    password: passwordInput.value
-  });
-};
+function login() {
+  const pseudo = pseudoInput.value.trim();
+  const password = passwordInput.value.trim();
+  if (!pseudo || !password) return alert("Pseudo et mot de passe requis");
+  
+  socket.emit("login", { pseudo, password });
+  myPseudo = pseudo;
+}
 
-socket.on("login_error", () => {
-  loginError.style.display = "block";
-});
+socket.on("login_error", () => alert("Mot de passe incorrect"));
 
-socket.on("history", msgs => {
+socket.on("history", data => {
   loginDiv.style.display = "none";
-  chatDiv.style.display = "flex";
+  chatContainer.style.display = "flex";
   messagesDiv.innerHTML = "";
-  msgs.forEach(addMessage);
+  data.forEach(addMessage);
 });
 
-socket.emit("message", {
-  username: myPseudo,
-  text: messageInput.value
+// --------------------
+// USERS
+// --------------------
+socket.on("users", list => {
+  usersList.innerHTML = "";
+  list.forEach(u => {
+    const li = document.createElement("li");
+    li.textContent = u.pseudo;
+
+    const status = document.createElement("span");
+    status.className = "status";
+
+    if (u.isMuted) status.textContent = "🔇";
+    else if (u.inVoice) status.textContent = "🔊";
+    else status.textContent = "🔈";
+
+    li.appendChild(status);
+    usersList.appendChild(li);
+  });
 });
 
 // --------------------
@@ -55,7 +70,7 @@ messageInput.onkeydown = e => {
 };
 
 function sendMessage() {
-  if (!messageInput.value.trim()) return;
+  if (!messageInput.value) return;
 
   socket.emit("message", {
     pseudo: myPseudo,
@@ -67,29 +82,46 @@ function sendMessage() {
 
 function addMessage(msg) {
   const div = document.createElement("div");
-  div.className = "message";
-  div.innerHTML = `<b>${msg.pseudo}</b> : ${msg.text}`;
+  div.innerHTML = `<b>${msg.pseudo}</b>: ${msg.text}`;
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 // --------------------
-// USERS + ICÔNES
+// VOCAL
 // --------------------
-socket.on("users", list => {
-  usersUl.innerHTML = "";
+voiceBtn.onclick = async () => {
+  if (inVoice) return stopVoice();
 
-  list.forEach(u => {
-    const li = document.createElement("li");
-    li.textContent = u.pseudo + " ";
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    inVoice = true;
+    isMuted = false;
+    muteBtn.textContent = "🔇 Muet";
 
-    const icon = document.createElement("span");
+    socket.emit("joinVoice");
 
-    if (u.isMuted) icon.textContent = "🔇";
-    else if (u.inVoice) icon.textContent = "🔊";
-    else icon.textContent = "🔈";
+    // ajoute notre flux à la page via webrtc.js
+    addLocalStream(localStream);
 
-    li.appendChild(icon);
-    usersUl.appendChild(li);
-  });
-});
+  } catch (err) {
+    alert("Impossible d’accéder au micro : " + err.message);
+  }
+};
+
+muteBtn.onclick = () => {
+  if (!localStream) return;
+  isMuted = !isMuted;
+  localStream.getAudioTracks()[0].enabled = !isMuted;
+  muteBtn.textContent = isMuted ? "🔇 Muet" : "🎤 Actif";
+  socket.emit(isMuted ? "leaveVoice" : "joinVoice");
+};
+
+function stopVoice() {
+  if (!localStream) return;
+  localStream.getTracks().forEach(t => t.stop());
+  inVoice = false;
+  isMuted = true;
+  muteBtn.textContent = "🔇 Muet";
+  socket.emit("leaveVoice");
+}
