@@ -1,19 +1,16 @@
-const users = new Map();
+const users = [];
 
 module.exports = {
   addUser(id, pseudo, ip) {
-    users.set(id, { id, pseudo, ip, inVoice: false, isMuted: false });
+    users.push({ socketId: id, pseudo, ip });
   },
+
   removeUser(id) {
-    users.delete(id);
+    const index = users.findIndex(u => u.socketId === id);
+    if (index !== -1) users.splice(index, 1);
   },
+
   getUsers() {
-    return Array.from(users.values());
-  },
-  getPseudoByIp(ip, config) {
-    for (const key in config.ipPseudo) {
-      if (ip.startsWith(key)) return config.ipPseudo[key];
-    }
-    return "";
+    return users;
   }
 };
