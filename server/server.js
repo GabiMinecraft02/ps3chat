@@ -78,6 +78,10 @@ io.on("connection", socket => {
   });
 });
 
-server.listen(process.env.PORT || 40000, () => {
-  console.log("Serveur démarré");
+const PORT = process.env.PORT || 40000;
+const HOST = "0.0.0.0";
+
+server.listen(PORT, HOST, () => {
+  console.log(`Serveur démarré sur ${HOST}:${PORT}`);
 });
+
