@@ -55,17 +55,25 @@ io.on("connection", socket => {
   });
 
   socket.on("message", async msg => {
-    if (!msg.text || !msg.user) return;
+  if (!msg.text || !msg.pseudo) return;
 
-    const message = {
-      pseudo: msg.user,
-      text: msg.text,
-      time: new Date().toLocaleTimeString()
-    };
+  const message = {
+    pseudo: msg.pseudo,
+    text: msg.text,
+    time: new Date().toLocaleTimeString()
+  };
 
-    await supabase.from("messages").insert(message);
-    io.emit("message", message);
-  });
+  const { error } = await supabase
+    .from("messages")
+    .insert(message);
+
+  if (error) {
+    console.error("Erreur Supabase insert :", error);
+    return;
+  }
+
+  io.emit("message", message);
+});
 
   // Vocal état
   socket.on("joinVoice", () => {
