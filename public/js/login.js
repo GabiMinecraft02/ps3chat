@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     socket.emit("login", { pseudo, password });
   }
+  window.login = login
 
   socket.on("login_error", () => {
     alert("Mot de passe incorrect");
@@ -22,3 +23,4 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "chat.html"; // Redirection après login
   });
 });
+
