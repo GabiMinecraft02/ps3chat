@@ -2,55 +2,84 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const { createClient } = require("@supabase/supabase-js");
+
 const config = require("./config");
 const users = require("./users");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*"
+  }
+});
 
+// --------------------
+// SUPABASE
+// --------------------
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
 
+// --------------------
+// STATIC FILES
+// --------------------
 app.use(express.static("public"));
 
 // --------------------
-// Whitelist IP
+// IP WHITELIST
 // --------------------
 io.use((socket, next) => {
-  const ip = socket.handshake.headers["x-forwarded-for"] || socket.handshake.address;
+  const ip =
+    socket.handshake.headers["x-forwarded-for"]?.split(",")[0] ||
+    socket.handshake.address;
+
+  console.log("IP détectée :", ip);
+
   if (!config.whitelist.some(w => ip.includes(w))) {
+    console.log("IP refusée :", ip);
     return next(new Error("IP refusée"));
   }
+
   socket.realIp = ip;
   next();
 });
 
 // --------------------
-// Connexions
+// SOCKET.IO
 // --------------------
 io.on("connection", socket => {
   console.log("Connecté :", socket.realIp);
 
+  // -------- LOGIN --------
   socket.on("login", async ({ pseudo, password }) => {
     if (password !== config.password) {
       socket.emit("login_error");
       return;
     }
 
-    users.addUser(socket.id, pseudo, socket.realIp);
+    // IP -> pseudo forcé si présent
+    const forcedPseudo = config.ipNames[socket.realIp];
+    const finalPseudo = forcedPseudo || pseudo;
 
-    const { data, error } = await supabase
+    users.addUser(socket.id, finalPseudo, socket.realIp);
+
+    // Historique messages
+    const { data } = await supabase
       .from("messages")
       .select("*")
       .order("id", { ascending: true });
 
-    socket.emit("history", error ? [] : data);
+    socket.emit("login_ok", {
+      pseudo: finalPseudo,
+      messages: data || []
+    });
+
     io.emit("users", users.getUsers());
   });
 
+  // -------- MESSAGE --------
   socket.on("message", async msg => {
     if (!msg.text || !msg.pseudo) return;
 
@@ -61,27 +90,20 @@ io.on("connection", socket => {
     };
 
     await supabase.from("messages").insert(message);
-
     io.emit("message", message);
   });
 
-  // --------------------
-  // WebRTC signalisation
-  // --------------------
-  socket.on("webrtc-offer", offer => socket.broadcast.emit("webrtc-offer", offer));
-  socket.on("webrtc-answer", answer => socket.broadcast.emit("webrtc-answer", answer));
-  socket.on("webrtc-candidate", candidate => socket.broadcast.emit("webrtc-candidate", candidate));
-
+  // -------- DISCONNECT --------
   socket.on("disconnect", () => {
     users.removeUser(socket.id);
     io.emit("users", users.getUsers());
   });
 });
 
+// --------------------
+// LISTEN (RENDER OK)
+// --------------------
 const PORT = process.env.PORT || 40000;
-const HOST = "0.0.0.0";
-
-server.listen(PORT, HOST, () => {
-  console.log(`Serveur démarré sur ${HOST}:${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+  console.log("Serveur démarré sur le port", PORT);
 });
-
