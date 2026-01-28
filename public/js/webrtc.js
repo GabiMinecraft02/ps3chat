@@ -1,131 +1,66 @@
-const callBtn = document.getElementById("callBtn");
-const muteBtn = document.getElementById("muteBtn");
-const micSelect = document.getElementById("micSelect");
+const peers = {};
+const localVideo = document.createElement("audio"); // juste audio
 
-let localStream = null;
-let peer = null;
-let isMuted = false;
-
-// --------------------
-// WebRTC config
-// --------------------
-const rtcConfig = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" }
-  ]
-};
-
-// --------------------
-// Liste micros
-// --------------------
-async function loadMics() {
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  micSelect.innerHTML = "";
-
-  devices.forEach(d => {
-    if (d.kind === "audioinput") {
-      const opt = document.createElement("option");
-      opt.value = d.deviceId;
-      opt.textContent = d.label || "Micro";
-      micSelect.appendChild(opt);
-    }
-  });
+function addLocalStream(stream) {
+  localVideo.srcObject = stream;
+  localVideo.autoplay = true;
 }
 
-// iOS / mobile : labels après permission
-navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-  stream.getTracks().forEach(t => t.stop());
-  loadMics();
+// Quand quelqu’un rejoint / offre un flux
+socket.on("webrtc-offer", async ({ from, offer }) => {
+  const pc = createPeerConnection(from);
+  await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.emit("webrtc-answer", { to: from, answer });
 });
 
-// --------------------
-// Start call
-// --------------------
-callBtn.onclick = async () => {
-  if (peer) return;
+// Quand on reçoit un answer
+socket.on("webrtc-answer", async ({ from, answer }) => {
+  const pc = peers[from];
+  if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
+});
 
-  const deviceId = micSelect.value;
+// ICE candidates
+socket.on("webrtc-candidate", ({ from, candidate }) => {
+  const pc = peers[from];
+  if (pc && candidate) pc.addIceCandidate(new RTCIceCandidate(candidate));
+});
 
-  localStream = await navigator.mediaDevices.getUserMedia({
-    audio: deviceId ? { deviceId: { exact: deviceId } } : true
-  });
+function createPeerConnection(id) {
+  const pc = new RTCPeerConnection();
+  if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-  peer = new RTCPeerConnection(rtcConfig);
-
-  // Envoie micro
-  localStream.getTracks().forEach(track => {
-    peer.addTrack(track, localStream);
-  });
-
-  // Reçoit audio
-  peer.ontrack = e => {
-    const audio = document.createElement("audio");
-    audio.srcObject = e.streams[0];
-    audio.autoplay = true;
-    document.body.appendChild(audio);
+  pc.ontrack = event => {
+    let audio = document.getElementById("audio-" + id);
+    if (!audio) {
+      audio = document.createElement("audio");
+      audio.id = "audio-" + id;
+      audio.autoplay = true;
+      document.body.appendChild(audio);
+    }
+    audio.srcObject = event.streams[0];
   };
 
-  // ICE
-  peer.onicecandidate = e => {
+  pc.onicecandidate = e => {
     if (e.candidate) {
-      socket.emit("webrtc-candidate", e.candidate);
+      socket.emit("webrtc-candidate", { to: id, candidate: e.candidate });
     }
   };
 
-  const offer = await peer.createOffer();
-  await peer.setLocalDescription(offer);
-  socket.emit("webrtc-offer", offer);
-};
+  peers[id] = pc;
+  return pc;
+}
 
-// --------------------
-// Mute micro
-// --------------------
-muteBtn.onclick = () => {
-  if (!localStream) return;
-
-  isMuted = !isMuted;
-  localStream.getAudioTracks()[0].enabled = !isMuted;
-  muteBtn.textContent = isMuted ? "🔇 Muet" : "🎤 Actif";
-};
-
-// --------------------
-// SIGNALISATION SOCKET
-// --------------------
-socket.on("webrtc-offer", async offer => {
-  if (peer) return;
-
-  peer = new RTCPeerConnection(rtcConfig);
-
-  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  localStream.getTracks().forEach(track => {
-    peer.addTrack(track, localStream);
-  });
-
-  peer.ontrack = e => {
-    const audio = document.createElement("audio");
-    audio.srcObject = e.streams[0];
-    audio.autoplay = true;
-    document.body.appendChild(audio);
-  };
-
-  peer.onicecandidate = e => {
-    if (e.candidate) {
-      socket.emit("webrtc-candidate", e.candidate);
+// Quand quelqu’un rejoint le vocal, crée un offer
+socket.on("voiceUsers", list => {
+  list.forEach(u => {
+    if (u.pseudo !== myPseudo && !peers[u.socketId]) {
+      const pc = createPeerConnection(u.socketId);
+      pc.createOffer().then(offer => {
+        pc.setLocalDescription(offer);
+        socket.emit("webrtc-offer", { to: u.socketId, offer });
+      });
     }
-  };
-
-  await peer.setRemoteDescription(offer);
-  const answer = await peer.createAnswer();
-  await peer.setLocalDescription(answer);
-
-  socket.emit("webrtc-answer", answer);
+  });
 });
-
-socket.on("webrtc-answer", answer => {
-  peer?.setRemoteDescription(answer);
-});
-
-socket.on("webrtc-candidate", candidate => {
-  peer?.addIceCandidate(candidate);
-});
-
