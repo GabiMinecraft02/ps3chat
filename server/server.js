@@ -52,11 +52,14 @@ io.use((socket, next) => {
 io.on("connection", socket => {
   console.log("Connecté :", socket.realIp);
 
-  socket.on("login", async ({ pseudo, password }) => {
-    if (password !== config.password) {
-      socket.emit("login_error");
-      return;
-    }
+socket.on("login", ({ password }) => {
+  if (password === config.password) {
+    socket.emit("login_ok");
+  } else {
+    socket.emit("login_error");
+  }
+});
+
 
     users.addUser(socket.id, pseudo, socket.realIp);
 
