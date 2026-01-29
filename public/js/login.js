@@ -34,8 +34,10 @@ if (loginBtn) {
 // LOGIN OK
 // --------------------
 socket.on("history", messages => {
-  loginContainer.style.display = "none";
-  chatContainer.style.display = "block";
+  if (loginContainer && chatContainer) {
+    loginContainer.style.display = "none";
+    chatContainer.style.display = "block";
+  }
 });
 
 // --------------------
@@ -44,3 +46,4 @@ socket.on("history", messages => {
 socket.on("login_error", () => {
   alert("Mot de passe incorrect");
 });
+
