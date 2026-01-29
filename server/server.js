@@ -42,17 +42,22 @@ function getRealIp(socket) {
 app.post("/login", (req, res) => {
   const { password } = req.body;
 
-  // Vérification IP si nécessaire
-  const ip = req.ip; 
+  // Vérification IP (optionnel, si tu veux bloquer certaines IPs)
+  const ip = req.ip;
   if (!config.whitelist.includes(ip)) {
     return res.status(403).send("IP non autorisée");
   }
 
+  // Vérification mot de passe
   if (password === config.password) {
-    return res.redirect("/index.html"); // ← redirection côté serveur
+    // Redirection vers index.html
+    return res.redirect("/index.html");
   }
+
+  // Si mot de passe incorrect
   res.status(401).send("Mot de passe incorrect");
 });
+
 
 // ======================
 // SOCKET.IO
