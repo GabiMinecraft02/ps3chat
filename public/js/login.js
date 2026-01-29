@@ -1,27 +1,46 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const loginBtn = document.getElementById("loginBtn");
-  const pseudoInput = document.getElementById("pseudo");
-  const passwordInput = document.getElementById("password");
+// socket GLOBAL (obligatoire)
+const socket = io();
 
-  loginBtn.addEventListener("click", login);
+// éléments DOM
+const loginBtn = document.getElementById("login-btn");
+const pseudoInput = document.getElementById("pseudo");
+const passwordInput = document.getElementById("password");
+const loginContainer = document.getElementById("login-container");
+const chatContainer = document.getElementById("chat-container");
 
-  function login() {
-    const pseudo = pseudoInput.value.trim();
-    const password = passwordInput.value.trim();
-    if (!pseudo || !password) return alert("Pseudo et mot de passe requis");
+// --------------------
+// FONCTION LOGIN (GLOBALE)
+// --------------------
+window.login = function () {
+  const pseudo = pseudoInput.value.trim();
+  const password = passwordInput.value.trim();
 
-    socket.emit("login", { pseudo, password });
+  if (!pseudo || !password) {
+    alert("Pseudo ou mot de passe manquant");
+    return;
   }
+
+  socket.emit("login", { pseudo, password });
+};
+
+// --------------------
+// CLICK BOUTON
+// --------------------
+if (loginBtn) {
   loginBtn.onclick = login;
+}
 
-  socket.on("login_error", () => {
-    alert("Mot de passe incorrect");
-  });
-
-  socket.on("history", messages => {
-    localStorage.setItem("history", JSON.stringify(messages));
-    window.location.href = "chat.html"; // Redirection après login
-  });
+// --------------------
+// LOGIN OK
+// --------------------
+socket.on("history", messages => {
+  loginContainer.style.display = "none";
+  chatContainer.style.display = "block";
 });
 
-
+// --------------------
+// LOGIN ERREUR
+// --------------------
+socket.on("login_error", () => {
+  alert("Mot de passe incorrect");
+});
