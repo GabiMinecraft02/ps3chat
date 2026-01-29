@@ -41,10 +41,17 @@ function getRealIp(socket) {
 // ======================
 app.post("/login", (req, res) => {
   const { password } = req.body;
-  if (password === config.password) {
-    return res.json({ ok: true });
+
+  // Vérification IP si nécessaire
+  const ip = req.ip; 
+  if (!config.whitelist.includes(ip)) {
+    return res.status(403).send("IP non autorisée");
   }
-  res.status(401).json({ ok: false });
+
+  if (password === config.password) {
+    return res.redirect("/index.html"); // ← redirection côté serveur
+  }
+  res.status(401).send("Mot de passe incorrect");
 });
 
 // ======================
