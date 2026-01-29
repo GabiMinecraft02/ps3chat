@@ -1,8 +1,14 @@
 module.exports = {
   password: "Ps3Backups.",
 
-  // ❗ Inutile sur Render (IP publiques)
-  whitelist: [],
+  whitelist: [
+    "127.0.0.1",
+    "::1",
+    "192.168.1.39",
+    "192.168.1.31",
+    "192.168.1.14",
+    "192.168.1.76"
+  ],
 
   ipNames: {
     "192.168.1.39": "GabiMinecraft02",
