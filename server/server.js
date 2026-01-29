@@ -60,6 +60,8 @@ io.on("connection", socket => {
 
     users.addUser(socket.id, pseudo, socket.realIp);
 
+    socket.emit("login_ok", pseudo);
+
     const { data } = await supabase
       .from("messages")
       .select("*")
