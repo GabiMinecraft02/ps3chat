@@ -38,29 +38,53 @@ io.use((socket, next) => {
 });
 
 /* ======================
+   LOGIN SIMPLE HTTP
+====================== */
+app.use(express.json());
+
+app.post("/login", (req, res) => {
+  const { password } = req.body;
+
+  if (password === config.password) {
+    return res.json({ ok: true });
+  }
+
+  res.status(401).json({ ok: false });
+});
+
+/* ======================
    SOCKET EVENTS
 ====================== */
 io.on("connection", (socket) => {
   console.log("Connecté :", socket.realIp);
 
-  /* -------- LOGIN -------- */
-  socket.on("login", async ({ pseudo, password }) => {
-    if (!pseudo || password !== config.password) {
-      socket.emit("login_error");
-      return;
-    }
-
+  // Ajouter les users
+  socket.on("join", ({ pseudo }) => {
     users.addUser(socket.id, pseudo, socket.realIp);
-    socket.emit("login_ok", pseudo);
-
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .order("id", { ascending: true });
-
-    socket.emit("history", data || []);
     io.emit("users", users.getUsers());
   });
+
+  // Messages
+  socket.on("message", async (msg) => {
+    if (!msg.text || !msg.pseudo) return;
+
+    const message = {
+      pseudo: msg.pseudo,
+      text: msg.text,
+      time: new Date().toLocaleTimeString()
+    };
+
+    await supabase.from("messages").insert(message);
+    io.emit("message", message);
+  });
+
+  // Disconnect
+  socket.on("disconnect", () => {
+    users.removeUser(socket.id);
+    io.emit("users", users.getUsers());
+  });
+});
+
 
   /* -------- MESSAGE -------- */
   socket.on("message", async ({ pseudo, text }) => {
