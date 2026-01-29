@@ -2,84 +2,73 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const { createClient } = require("@supabase/supabase-js");
-
 const config = require("./config");
 const users = require("./users");
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: "*"
   }
 });
 
-// --------------------
-// SUPABASE
-// --------------------
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
 
-// --------------------
-// STATIC FILES
-// --------------------
 app.use(express.static("public"));
 
-// --------------------
-// IP WHITELIST
-// --------------------
-io.use((socket, next) => {
-  const ip =
-    socket.handshake.headers["x-forwarded-for"]?.split(",")[0] ||
-    socket.handshake.address;
+/* ======================
+   IP REAL (RENDER SAFE)
+====================== */
+function getRealIp(socket) {
+  const xff = socket.handshake.headers["x-forwarded-for"];
+  if (xff) return xff.split(",")[0].trim();
+  return socket.handshake.address;
+}
 
+/* ======================
+   SOCKET AUTH
+====================== */
+io.use((socket, next) => {
+  const ip = getRealIp(socket);
   console.log("IP détectée :", ip);
 
-  if (!config.whitelist.some(w => ip.includes(w))) {
-    console.log("IP refusée :", ip);
-    return next(new Error("IP refusée"));
-  }
+  // 🔴 désactivé volontairement (Render)
+  // if (!config.whitelist.includes(ip)) {
+  //   return next(new Error("IP refusée"));
+  // }
 
   socket.realIp = ip;
   next();
 });
 
-// --------------------
-// SOCKET.IO
-// --------------------
+/* ======================
+   SOCKET EVENTS
+====================== */
 io.on("connection", socket => {
   console.log("Connecté :", socket.realIp);
 
-  // -------- LOGIN --------
   socket.on("login", async ({ pseudo, password }) => {
     if (password !== config.password) {
       socket.emit("login_error");
       return;
     }
 
-    // IP -> pseudo forcé si présent
-    const forcedPseudo = config.ipNames[socket.realIp];
-    const finalPseudo = forcedPseudo || pseudo;
+    users.addUser(socket.id, pseudo, socket.realIp);
 
-    users.addUser(socket.id, finalPseudo, socket.realIp);
-
-    // Historique messages
     const { data } = await supabase
       .from("messages")
       .select("*")
       .order("id", { ascending: true });
 
-    socket.emit("login_ok", {
-      pseudo: finalPseudo,
-      messages: data || []
-    });
-
+    socket.emit("history", data || []);
     io.emit("users", users.getUsers());
   });
 
-  // -------- MESSAGE --------
   socket.on("message", async msg => {
     if (!msg.text || !msg.pseudo) return;
 
@@ -93,17 +82,16 @@ io.on("connection", socket => {
     io.emit("message", message);
   });
 
-  // -------- DISCONNECT --------
   socket.on("disconnect", () => {
     users.removeUser(socket.id);
     io.emit("users", users.getUsers());
   });
 });
 
-// --------------------
-// LISTEN (RENDER OK)
-// --------------------
+/* ======================
+   START SERVER (RENDER)
+====================== */
 const PORT = process.env.PORT || 40000;
 server.listen(PORT, "0.0.0.0", () => {
-  console.log("Serveur démarré sur le port", PORT);
+  console.log("Serveur lancé sur le port", PORT);
 });
