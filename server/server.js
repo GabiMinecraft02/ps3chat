@@ -1,3 +1,5 @@
+// server/server.js
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -8,29 +10,25 @@ const users = require("./users");
 const app = express();
 const server = http.createServer(app);
 
+// Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: "*",
-  },
+    origin: "*"
+  }
 });
 
 // Supabase
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
+// Middleware JSON
+app.use(express.json());
 app.use(express.static("public"));
-app.use(express.json()); // pour app.post
 
 // ======================
-// POST LOGIN SIMPLE
-// ======================
-app.post("/login", (req, res) => {
-  const { password } = req.body;
-  if (password === config.password) return res.json({ ok: true });
-  return res.status(401).json({ ok: false });
-});
-
-// ======================
-// UTIL: IP REAL
+// UTIL: IP réelle
 // ======================
 function getRealIp(socket) {
   const xff = socket.handshake.headers["x-forwarded-for"];
@@ -39,14 +37,26 @@ function getRealIp(socket) {
 }
 
 // ======================
-// SOCKET EVENTS
+// LOGIN HTTP SIMPLE
+// ======================
+app.post("/login", (req, res) => {
+  const { password } = req.body;
+  if (password === config.password) {
+    return res.json({ ok: true });
+  }
+  res.status(401).json({ ok: false });
+});
+
+// ======================
+// SOCKET.IO
 // ======================
 io.use((socket, next) => {
   const ip = getRealIp(socket);
   console.log("IP détectée :", ip);
 
+  // 🔴 whitelist activée
   if (!config.whitelist.includes(ip)) {
-    console.log("IP non autorisée :", ip);
+    console.log("IP refusée :", ip);
     return next(new Error("IP refusée"));
   }
 
@@ -57,19 +67,27 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
   console.log("Connecté :", socket.realIp);
 
-  // LOGIN VIA SOCKET
+  // LOGIN SOCKET
   socket.on("login", async ({ pseudo }) => {
-    if (!pseudo) pseudo = config.ipNames[socket.realIp] || "Invité";
+    const ip = socket.realIp;
 
-    users.addUser(socket.id, pseudo, socket.realIp);
+    // Associer pseudo à IP
+    if (config.ipNames[ip]) pseudo = config.ipNames[ip];
+    users.addUser(socket.id, pseudo, ip);
 
-    // Récup messages supabase
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .order("id", { ascending: true });
+    // Historique messages Supabase
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .order("id", { ascending: true });
+      if (error) console.error("Supabase history:", error);
+      socket.emit("history", data || []);
+    } catch (err) {
+      console.error("Erreur Supabase:", err);
+      socket.emit("history", []);
+    }
 
-    socket.emit("history", error ? [] : data);
     io.emit("users", users.getUsers());
   });
 
@@ -80,10 +98,15 @@ io.on("connection", (socket) => {
     const message = {
       pseudo: msg.pseudo,
       text: msg.text,
-      time: new Date().toLocaleTimeString(),
+      time: new Date().toLocaleTimeString()
     };
 
-    await supabase.from("messages").insert(message);
+    try {
+      await supabase.from("messages").insert(message);
+    } catch (err) {
+      console.error("Erreur insert Supabase:", err);
+    }
+
     io.emit("message", message);
   });
 
@@ -95,9 +118,9 @@ io.on("connection", (socket) => {
 });
 
 // ======================
-// START SERVER (RENDER SAFE)
+// START SERVER
 // ======================
 const PORT = process.env.PORT || 40000;
 server.listen(PORT, "0.0.0.0", () => {
-  console.log("Serveur lancé sur le port", PORT);
+  console.log(`Serveur lancé sur le port ${PORT}`);
 });
