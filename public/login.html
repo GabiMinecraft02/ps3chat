@@ -2,87 +2,50 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>PS3Chat – Connexion</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <title>PS3Chat – Login</title>
   <style>
     body {
-      margin: 0;
-      height: 100vh;
-      background: #020617;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: Arial, sans-serif;
+      background:#111;
+      color:white;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      font-family:sans-serif;
     }
-
-    #loginBox {
-      background: #0f172a;
-      padding: 20px;
-      width: 280px;
-      border-radius: 6px;
-      text-align: center;
-      box-shadow: 0 0 10px black;
-    }
-
-    h2 {
-      margin-top: 0;
-      font-size: 18px;
-    }
-
-    input {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      background: #020617;
-      border: 1px solid #1e293b;
-      color: white;
-    }
-
-    button {
-      width: 100%;
-      padding: 8px;
-      background: #2563eb;
-      border: none;
-      color: white;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #1d4ed8;
-    }
-
-    #error {
-      color: #f87171;
-      font-size: 13px;
-      display: none;
+    input, button {
+      padding:10px;
+      margin-top:10px;
+      width:100%;
     }
   </style>
 </head>
-
 <body>
-  <div id="loginBox">
-    <h2>PS3Chat</h2>
 
-<div id="login-container">
-  <input id="pseudo" placeholder="Pseudo">
-  <input id="password" type="password" placeholder="Mot de passe">
-  <button id="login-btn">Connexion</button>
+<div>
+  <h2>PS3Chat</h2>
+  <input type="password" id="password" placeholder="Mot de passe">
+  <button onclick="login()">Connexion</button>
+  <div id="error" style="color:red"></div>
 </div>
 
-<div id="chat-container" style="display:none;">
-  <!-- chat -->
-</div>
+<script>
+async function login() {
+  const password = document.getElementById("password").value;
 
-<script src="/socket.io/socket.io.js"></script>
-<script src="js/login.js"></script>
+  const res = await fetch("/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password })
+  });
+
+  if (res.ok) {
+    location.href = "/index.html";
+  } else {
+    document.getElementById("error").textContent = "Mot de passe incorrect";
+  }
+}
+</script>
 
 </body>
 </html>
-
-
-
-
-
-
