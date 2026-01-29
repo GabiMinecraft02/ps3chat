@@ -9,9 +9,7 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: {
-    origin: "*"
-  }
+  cors: { origin: "*" }
 });
 
 const supabase = createClient(
@@ -34,35 +32,25 @@ function getRealIp(socket) {
    SOCKET AUTH
 ====================== */
 io.use((socket, next) => {
-  const ip = getRealIp(socket);
-  console.log("IP détectée :", ip);
-
-  // 🔴 désactivé volontairement (Render)
-  // if (!config.whitelist.includes(ip)) {
-  //   return next(new Error("IP refusée"));
-  // }
-
-  socket.realIp = ip;
+  socket.realIp = getRealIp(socket);
+  console.log("IP détectée :", socket.realIp);
   next();
 });
 
 /* ======================
    SOCKET EVENTS
 ====================== */
-io.on("connection", socket => {
+io.on("connection", (socket) => {
   console.log("Connecté :", socket.realIp);
 
-socket.on("login", ({ password }) => {
-  if (password === config.password) {
-    socket.emit("login_ok");
-  } else {
-    socket.emit("login_error");
-  }
-});
-
+  /* -------- LOGIN -------- */
+  socket.on("login", async ({ pseudo, password }) => {
+    if (!pseudo || password !== config.password) {
+      socket.emit("login_error");
+      return;
+    }
 
     users.addUser(socket.id, pseudo, socket.realIp);
-
     socket.emit("login_ok", pseudo);
 
     const { data } = await supabase
@@ -74,12 +62,13 @@ socket.on("login", ({ password }) => {
     io.emit("users", users.getUsers());
   });
 
-  socket.on("message", async msg => {
-    if (!msg.text || !msg.pseudo) return;
+  /* -------- MESSAGE -------- */
+  socket.on("message", async ({ pseudo, text }) => {
+    if (!pseudo || !text) return;
 
     const message = {
-      pseudo: msg.pseudo,
-      text: msg.text,
+      pseudo,
+      text,
       time: new Date().toLocaleTimeString()
     };
 
@@ -87,6 +76,7 @@ socket.on("login", ({ password }) => {
     io.emit("message", message);
   });
 
+  /* -------- DISCONNECT -------- */
   socket.on("disconnect", () => {
     users.removeUser(socket.id);
     io.emit("users", users.getUsers());
